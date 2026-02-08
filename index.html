@@ -711,9 +711,14 @@
                 const result = await signInWithPopup(auth, provider);
                 // User will be handled by onAuthStateChanged
             } catch (error) {
-                console.error('Sign-in error:', error);
-                alert('Failed to sign in. Please try again.');
-            }
+  console.error('Sign-in error full object:', error);
+
+  const code = error?.code || "(no code)";
+  const msg  = error?.message || String(error);
+
+  alert(`Google sign-in failed:\n${code}\n\n${msg}`);
+}
+
         }
 
         // Sign out
