@@ -27,6 +27,98 @@
             padding: 30px;
         }
 
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(255,255,255,0.1);
+            padding: 40px;
+            text-align: center;
+        }
+
+        .login-container h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .login-container p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .google-signin-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .google-signin-btn:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+        }
+
+        .google-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+
+        .user-details {
+            flex: 1;
+            text-align: left;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .user-email {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .signout-btn {
+            padding: 8px 16px;
+            background: #f56565;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .signout-btn:hover {
+            background: #e53e3e;
+        }
+
         h1 {
             color: #333;
             margin-bottom: 10px;
@@ -440,10 +532,45 @@
             background-color: #fef08a;
             padding: 2px 0;
         }
+
+        .hidden {
+            display: none;
+        }
+
+        .unauthorized {
+            text-align: center;
+            padding: 40px 20px;
+            color: #e53e3e;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <h1>🔒 Secure Logbook</h1>
+        <p>Sign in to access your private logbook</p>
+        <button class="google-signin-btn" onclick="signInWithGoogle()">
+            <svg class="google-icon" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Sign in with Google
+        </button>
+    </div>
+
+    <!-- Main App (Hidden until authenticated) -->
+    <div id="mainApp" class="container hidden">
+        <div class="user-info">
+            <img id="userAvatar" class="user-avatar" src="" alt="User">
+            <div class="user-details">
+                <div class="user-name" id="userName"></div>
+                <div class="user-email" id="userEmail"></div>
+            </div>
+            <button class="signout-btn" onclick="signOut()">Sign Out</button>
+        </div>
+
         <h1>📔 Monthly Logbook</h1>
         
         <div id="syncStatus" class="sync-status">
@@ -541,12 +668,20 @@
         </div>
     </div>
 
+    <!-- Unauthorized Screen -->
+    <div id="unauthorizedScreen" class="login-container hidden">
+        <h1>🚫 Access Denied</h1>
+        <p class="unauthorized">This logbook is private. You are not authorized to access it.</p>
+        <button class="signout-btn" onclick="signOut()">Sign Out</button>
+    </div>
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        // Firebase configuration
+        // ⚠️ REPLACE WITH YOUR FIREBASE CONFIG ⚠️
         const firebaseConfig = {
             apiKey: "AIzaSyAZu2kIUWM4kYg8ddkjfKc4ZWLg1iyyAvE",
             authDomain: "logbook-9ac9e.firebaseapp.com",
@@ -556,13 +691,80 @@
             appId: "1:1030734291277:web:aa814881999f701a6b1704"
         };
 
+        // ⚠️ REPLACE WITH YOUR EMAIL ADDRESS ⚠️
+        const AUTHORIZED_EMAIL = "jung.kim3@nih.com";
+
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
 
         let editingId = null;
         let allEntries = [];
         let unsubscribe = null;
+        let currentUser = null;
+
+        // Sign in with Google
+        window.signInWithGoogle = async function() {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                // User will be handled by onAuthStateChanged
+            } catch (error) {
+                console.error('Sign-in error:', error);
+                alert('Failed to sign in. Please try again.');
+            }
+        };
+
+        // Sign out
+        window.signOut = async function() {
+            try {
+                await firebaseSignOut(auth);
+                if (unsubscribe) {
+                    unsubscribe();
+                    unsubscribe = null;
+                }
+            } catch (error) {
+                console.error('Sign-out error:', error);
+            }
+        };
+
+        // Check authentication state
+        onAuthStateChanged(auth, (user) => {
+            const loginScreen = document.getElementById('loginScreen');
+            const mainApp = document.getElementById('mainApp');
+            const unauthorizedScreen = document.getElementById('unauthorizedScreen');
+
+            if (user) {
+                // Check if user is authorized
+                if (user.email === AUTHORIZED_EMAIL) {
+                    // Authorized - show main app
+                    currentUser = user;
+                    loginScreen.classList.add('hidden');
+                    unauthorizedScreen.classList.add('hidden');
+                    mainApp.classList.remove('hidden');
+                    
+                    // Update user info
+                    document.getElementById('userName').textContent = user.displayName;
+                    document.getElementById('userEmail').textContent = user.email;
+                    document.getElementById('userAvatar').src = user.photoURL;
+                    
+                    // Load entries
+                    subscribeToEntries();
+                } else {
+                    // Not authorized
+                    loginScreen.classList.add('hidden');
+                    mainApp.classList.add('hidden');
+                    unauthorizedScreen.classList.remove('hidden');
+                }
+            } else {
+                // Not signed in
+                currentUser = null;
+                loginScreen.classList.remove('hidden');
+                mainApp.classList.add('hidden');
+                unauthorizedScreen.classList.add('hidden');
+            }
+        });
 
         // Update sync status UI
         function updateSyncStatus(status, message) {
@@ -582,7 +784,7 @@
                 indicator.classList.add('error');
                 textEl.textContent = message || 'Sync error';
             } else {
-                textEl.textContent = message || '☁️ Synced across all devices';
+                textEl.textContent = message || '☁️ Synced - Secure & Private';
             }
         }
 
@@ -638,6 +840,8 @@
 
         // Add new entry
         window.addEntry = async function() {
+            if (!currentUser) return;
+
             const input = document.getElementById('entryInput');
             const flagCheckbox = document.getElementById('flagCheckbox');
             const text = input.value.trim();
@@ -655,7 +859,8 @@
                 timestamp: timestamp,
                 text: text,
                 flagged: flagCheckbox.checked,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                userId: currentUser.uid
             };
 
             try {
@@ -942,9 +1147,8 @@
             document.getElementById('currentMonth').textContent = `Current Month: ${monthName}`;
         }
 
-        // Initialize app
+        // Initialize month display
         updateMonthDisplay();
-        subscribeToEntries();
     </script>
 </body>
 </html>
