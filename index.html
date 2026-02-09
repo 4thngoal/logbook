@@ -1110,12 +1110,13 @@
             else if (searchTerm) suffix = '_filtered';
             
             // Create CSV content
-            let csvContent = 'Timestamp,Flagged,Entry\n';
-            entries.forEach(entry => {
-                const escapedText = '"' + entry.text.replace(/"/g, '""') + '"';
-                const flagged = entry.flagged ? 'x' : '';
-                csvContent += `${entry.timestamp},${flagged},${escapedText}\n`;
-            });
+const BOM = '\uFEFF'; // UTF-8 BOM for Windows Excel
+let csvContent = BOM + 'Timestamp,Flagged,Entry\n';
+entries.forEach(entry => {
+    const escapedText = '"' + entry.text.replace(/"/g, '""') + '"';
+    const flagged = entry.flagged ? 'x' : '';
+    csvContent += `${entry.timestamp},${flagged},${escapedText}\n`;
+});
 
             // Create TXT content
             let txtContent = `Log Entries for ${monthKey}${suffix}\n`;
