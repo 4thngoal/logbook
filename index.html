@@ -329,6 +329,7 @@
             display: flex;
             gap: 15px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .flag-filter-option {
@@ -774,6 +775,10 @@
                     <label for="filterUnflagged">Unflagged Only</label>
                 </div>
                 <div class="flag-filter-option">
+                    <input type="radio" id="filterTodoOnly" name="flagFilter" value="todo-only" onchange="applyFilters()">
+                    <label for="filterTodoOnly">📋 To-Dos Only</label>
+                </div>
+                <div class="flag-filter-option">
                     <input type="radio" id="filterNoTodo" name="flagFilter" value="no-todo" onchange="applyFilters()">
                     <label for="filterNoTodo">Exclude Archived To-Dos</label>
                 </div>
@@ -820,15 +825,14 @@
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        // ⚠️ REPLACE WITH YOUR TEST FIREBASE CONFIG ⚠️
+        // ⚠️ REPLACE WITH YOUR FIREBASE CONFIG ⚠️
         const firebaseConfig = {
-  apiKey: "AIzaSyCFcWyhCOldayefFwhqDHUDszMRfp_BxQk",
-  authDomain: "logbook-test-d2399.firebaseapp.com",
-  projectId: "logbook-test-d2399",
-  storageBucket: "logbook-test-d2399.firebasestorage.app",
-  messagingSenderId: "30772720035",
-  appId: "1:30772720035:web:c9d1f8191c5b2be4aaaa16"
-
+            apiKey: "AIzaSyCFcWyhCOldayefFwhqDHUDszMRfp_BxQk",
+            authDomain: "logbook-test-d2399.firebaseapp.com",
+            projectId: "logbook-test-d2399",
+            storageBucket: "logbook-test-d2399.firebasestorage.app",
+            messagingSenderId: "30772720035",
+            appId: "1:30772720035:web:c9d1f8191c5b2be4aaaa16"
         };
 
         // ⚠️ REPLACE WITH YOUR EMAIL ADDRESS ⚠️
@@ -1131,6 +1135,8 @@
                 });
                 settingDueDate = null;
                 updateSyncStatus('synced');
+                // Automatically re-render to show the updated due date
+                window.renderTodos();
             } catch (error) {
                 console.error('Error saving due date:', error);
                 updateSyncStatus('error', 'Save failed');
@@ -1147,10 +1153,6 @@
         window.archiveTodo = async function(id) {
             const todo = allTodos.find(t => t.id === id);
             if (!todo || !todo.completed) return;
-
-            if (!confirm('Archive this completed to-do to log entries?')) {
-                return;
-            }
 
             const timestamp = getCurrentDateTime();
             const monthKey = getCurrentMonthKey();
@@ -1191,10 +1193,6 @@
                 return;
             }
 
-            if (!confirm(`Archive ${completedTodos.length} completed to-do(s) to log entries?`)) {
-                return;
-            }
-
             const timestamp = getCurrentDateTime();
             const monthKey = getCurrentMonthKey();
 
@@ -1218,7 +1216,6 @@
                 }
                 
                 updateSyncStatus('synced');
-                alert(`${completedTodos.length} to-do(s) archived successfully!`);
             } catch (error) {
                 console.error('Error archiving todos:', error);
                 updateSyncStatus('error', 'Archive failed');
@@ -1360,6 +1357,11 @@
                 }
                 
                 if (flagFilter === 'unflagged' && entry.flagged) {
+                    return false;
+                }
+
+                // To-dos only filter
+                if (flagFilter === 'todo-only' && !entry.fromTodo) {
                     return false;
                 }
 
@@ -1510,6 +1512,7 @@
             let suffix = '';
             if (flagFilter === 'flagged') suffix = '_flagged';
             else if (flagFilter === 'unflagged') suffix = '_unflagged';
+            else if (flagFilter === 'todo-only') suffix = '_todos-only';
             else if (flagFilter === 'no-todo') suffix = '_no-todo';
             else if (searchTerm) suffix = '_filtered';
             
