@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monthly Logbook</title>
+    <title>Monthly Logbook with To-Do</title>
     <style>
         * {
             margin: 0;
@@ -200,21 +200,27 @@
             border-color: #667eea;
         }
 
-        .flag-checkbox-container {
+        .checkbox-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-top: 10px;
+        }
+
+        .checkbox-item {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 5px;
-            padding-top: 10px;
         }
 
-        .flag-checkbox {
+        .checkbox-input {
             width: 24px;
             height: 24px;
             cursor: pointer;
         }
 
-        .flag-label {
+        .checkbox-label {
             font-size: 12px;
             color: #666;
             font-weight: 600;
@@ -378,8 +384,33 @@
             background: #fffaf0;
         }
 
+        .entry-item.from-todo {
+            border-left-color: #9f7aea;
+            background: #faf5ff;
+        }
+
         .entry-item.editing {
             border-left-color: #4299e1;
+        }
+
+        .todo-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #4299e1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .todo-item.completed {
+            border-left-color: #48bb78;
+            background: #f0fdf4;
+            opacity: 0.8;
+        }
+
+        .todo-item.overdue {
+            border-left-color: #f56565;
+            background: #fff5f5;
         }
 
         .entry-header {
@@ -393,6 +424,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .entry-time {
@@ -410,12 +442,47 @@
             font-weight: 600;
         }
 
+        .todo-badge {
+            background: #4299e1;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .completed-badge {
+            background: #48bb78;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .overdue-badge {
+            background: #f56565;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .due-date {
+            color: #666;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
         .entry-actions {
             display: flex;
             gap: 5px;
+            flex-wrap: wrap;
         }
 
-        .edit-btn, .delete-btn, .save-btn, .cancel-btn, .toggle-flag-btn {
+        .edit-btn, .delete-btn, .save-btn, .cancel-btn, .toggle-flag-btn,
+        .complete-btn, .archive-btn, .set-due-btn {
             padding: 5px 12px;
             font-size: 12px;
             border-radius: 5px;
@@ -466,10 +533,42 @@
             background: #ed8936;
         }
 
+        .complete-btn {
+            background: #48bb78;
+            color: white;
+        }
+
+        .complete-btn:hover {
+            background: #38a169;
+        }
+
+        .archive-btn {
+            background: #9f7aea;
+            color: white;
+        }
+
+        .archive-btn:hover {
+            background: #805ad5;
+        }
+
+        .set-due-btn {
+            background: #4299e1;
+            color: white;
+        }
+
+        .set-due-btn:hover {
+            background: #3182ce;
+        }
+
         .entry-text {
             color: #333;
             line-height: 1.6;
             white-space: pre-wrap;
+        }
+
+        .entry-text.completed {
+            text-decoration: line-through;
+            color: #718096;
         }
 
         .entry-edit-textarea {
@@ -486,6 +585,14 @@
         .entry-edit-textarea:focus {
             outline: none;
             border-color: #5568d3;
+        }
+
+        .due-date-input {
+            padding: 8px;
+            border: 2px solid #4299e1;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-top: 10px;
         }
 
         .empty-state {
@@ -542,6 +649,17 @@
             padding: 40px 20px;
             color: #e53e3e;
         }
+
+        .archive-completed-btn {
+            background: #9f7aea;
+            color: white;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        .archive-completed-btn:hover:not(:disabled) {
+            background: #805ad5;
+        }
     </style>
 </head>
 <body>
@@ -571,7 +689,7 @@
             <button class="signout-btn" id="signOutBtn">Sign Out</button>
         </div>
 
-        <h1>📔 Monthly Logbook</h1>
+        <h1>📔 Monthly Logbook & To-Do</h1>
         
         <div id="syncStatus" class="sync-status">
             <div class="sync-indicator"></div>
@@ -584,27 +702,44 @@
             <div class="input-header">
                 <textarea 
                     id="entryInput" 
-                    placeholder="Write your log entry here... (Ctrl+Enter to add)"
+                    placeholder="Write your log entry or to-do item here... (Ctrl+Enter to add)"
                 ></textarea>
-                <div class="flag-checkbox-container">
-                    <input type="checkbox" id="flagCheckbox" class="flag-checkbox">
-                    <label for="flagCheckbox" class="flag-label">🚩 Flag</label>
+                <div class="checkbox-container">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="flagCheckbox" class="checkbox-input">
+                        <label for="flagCheckbox" class="checkbox-label">🚩 Flag</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="todoCheckbox" class="checkbox-input">
+                        <label for="todoCheckbox" class="checkbox-label">✅ To Do</label>
+                    </div>
                 </div>
             </div>
             <div class="button-group">
                 <button class="add-btn" id="addBtn" onclick="addEntry()">Add Entry</button>
-                <button class="export-btn" onclick="exportLog()">Export to File</button>
+                <button class="export-btn" onclick="exportLog()">Export Logs</button>
+            </div>
+        </div>
+
+        <!-- To-Do Section -->
+        <div class="entries-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div class="section-title">📋 To-Do Items</div>
+                <button class="archive-completed-btn" onclick="archiveCompleted()">Archive Completed</button>
+            </div>
+            <div class="entries-list" id="todoList">
+                <div class="loading-state">Loading to-do items...</div>
             </div>
         </div>
 
         <div class="filter-section">
-            <div class="filter-title">🔍 Search & Filter</div>
+            <div class="filter-title">🔍 Search & Filter Logs</div>
             <div class="filter-controls">
                 <input 
                     type="text" 
                     class="filter-input" 
                     id="searchInput" 
-                    placeholder="Search entries..."
+                    placeholder="Search log entries..."
                     oninput="applyFilters()"
                 >
                 <div class="date-filter">
@@ -638,11 +773,15 @@
                     <input type="radio" id="filterUnflagged" name="flagFilter" value="unflagged" onchange="applyFilters()">
                     <label for="filterUnflagged">Unflagged Only</label>
                 </div>
+                <div class="flag-filter-option">
+                    <input type="radio" id="filterNoTodo" name="flagFilter" value="no-todo" onchange="applyFilters()">
+                    <label for="filterNoTodo">Exclude Archived To-Dos</label>
+                </div>
             </div>
         </div>
 
         <div class="entries-section">
-            <div class="section-title">Entries This Month</div>
+            <div class="section-title">📝 Log Entries This Month</div>
             <div class="entries-list" id="entriesList">
                 <div class="loading-state">Loading entries...</div>
             </div>
@@ -651,19 +790,19 @@
         <div class="stats">
             <div class="stat-item">
                 <div class="stat-value" id="totalEntries">0</div>
-                <div class="stat-label">Total Entries</div>
+                <div class="stat-label">Total Log Entries</div>
             </div>
             <div class="stat-item">
                 <div class="stat-value" id="flaggedEntries">0</div>
                 <div class="stat-label">Flagged Entries</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="filteredEntries">0</div>
-                <div class="stat-label">Filtered Entries</div>
+                <div class="stat-value" id="totalTodos">0</div>
+                <div class="stat-label">Active To-Dos</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value" id="todayEntries">0</div>
-                <div class="stat-label">Today's Entries</div>
+                <div class="stat-value" id="completedTodos">0</div>
+                <div class="stat-label">Completed To-Dos</div>
             </div>
         </div>
     </div>
@@ -679,16 +818,17 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        // ⚠️ REPLACE WITH YOUR FIREBASE CONFIG ⚠️
+        // ⚠️ REPLACE WITH YOUR TEST FIREBASE CONFIG ⚠️
         const firebaseConfig = {
-            apiKey: "AIzaSyAZu2kIUWM4kYg8ddkjfKc4ZWLg1iyyAvE",
-            authDomain: "logbook-9ac9e.firebaseapp.com",
-            projectId: "logbook-9ac9e",
-            storageBucket: "logbook-9ac9e.firebasestorage.app",
-            messagingSenderId: "1030734291277",
-            appId: "1:1030734291277:web:aa814881999f701a6b1704"
+  apiKey: "AIzaSyCFcWyhCOldayefFwhqDHUDszMRfp_BxQk",
+  authDomain: "logbook-test-d2399.firebaseapp.com",
+  projectId: "logbook-test-d2399",
+  storageBucket: "logbook-test-d2399.firebasestorage.app",
+  messagingSenderId: "30772720035",
+  appId: "1:30772720035:web:c9d1f8191c5b2be4aaaa16"
+
         };
 
         // ⚠️ REPLACE WITH YOUR EMAIL ADDRESS ⚠️
@@ -702,39 +842,42 @@
 
         let editingId = null;
         let allEntries = [];
-        let unsubscribe = null;
+        let allTodos = [];
+        let unsubscribeEntries = null;
+        let unsubscribeTodos = null;
         let currentUser = null;
+        let settingDueDate = null;
 
         // Sign in with Google
         async function signInWithGoogle() {
             try {
                 const result = await signInWithPopup(auth, provider);
-                // User will be handled by onAuthStateChanged
             } catch (error) {
-  console.error('Sign-in error full object:', error);
-
-  const code = error?.code || "(no code)";
-  const msg  = error?.message || String(error);
-
-  alert(`Google sign-in failed:\n${code}\n\n${msg}`);
-}
-
+                console.error('Sign-in error full object:', error);
+                const code = error?.code || "(no code)";
+                const msg  = error?.message || String(error);
+                alert(`Google sign-in failed:\n${code}\n\n${msg}`);
+            }
         }
 
         // Sign out
         async function signOut() {
             try {
                 await firebaseSignOut(auth);
-                if (unsubscribe) {
-                    unsubscribe();
-                    unsubscribe = null;
+                if (unsubscribeEntries) {
+                    unsubscribeEntries();
+                    unsubscribeEntries = null;
+                }
+                if (unsubscribeTodos) {
+                    unsubscribeTodos();
+                    unsubscribeTodos = null;
                 }
             } catch (error) {
                 console.error('Sign-out error:', error);
             }
         }
 
-        // Attach event listeners after DOM is loaded
+        // Attach event listeners
         document.getElementById('googleSignInBtn').addEventListener('click', signInWithGoogle);
 
         // Check authentication state
@@ -744,38 +887,31 @@
             const unauthorizedScreen = document.getElementById('unauthorizedScreen');
 
             if (user) {
-                // Check if user is authorized
                 if (user.email === AUTHORIZED_EMAIL) {
-                    // Authorized - show main app
                     currentUser = user;
                     loginScreen.classList.add('hidden');
                     unauthorizedScreen.classList.add('hidden');
                     mainApp.classList.remove('hidden');
                     
-                    // Update user info
                     document.getElementById('userName').textContent = user.displayName;
                     document.getElementById('userEmail').textContent = user.email;
                     document.getElementById('userAvatar').src = user.photoURL;
                     
-                    // Attach sign out button
                     document.getElementById('signOutBtn').addEventListener('click', signOut);
                     
-                    // Load entries
                     subscribeToEntries();
+                    subscribeToTodos();
                 } else {
-                    // Not authorized
                     loginScreen.classList.add('hidden');
                     mainApp.classList.add('hidden');
                     unauthorizedScreen.classList.remove('hidden');
                     
-                    // Attach sign out button for unauthorized screen
                     const unAuthBtn = document.getElementById('unauthorizedSignOutBtn');
                     if (unAuthBtn) {
                         unAuthBtn.addEventListener('click', signOut);
                     }
                 }
             } else {
-                // Not signed in
                 currentUser = null;
                 loginScreen.classList.remove('hidden');
                 mainApp.classList.add('hidden');
@@ -833,13 +969,23 @@
             return `${year}-${month}-${day}`;
         }
 
-        // Subscribe to real-time updates
+        // Check if date is overdue
+        function isOverdue(dueDate) {
+            if (!dueDate) return false;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const due = new Date(dueDate);
+            due.setHours(0, 0, 0, 0);
+            return due < today;
+        }
+
+        // Subscribe to log entries
         function subscribeToEntries() {
             const monthKey = getCurrentMonthKey();
             const entriesRef = collection(db, `logbooks/${monthKey}/entries`);
             const q = query(entriesRef, orderBy('timestamp', 'desc'));
 
-            unsubscribe = onSnapshot(q, 
+            unsubscribeEntries = onSnapshot(q, 
                 (snapshot) => {
                     allEntries = [];
                     snapshot.forEach((doc) => {
@@ -855,42 +1001,244 @@
             );
         }
 
-        // Add new entry
+        // Subscribe to to-do items
+        function subscribeToTodos() {
+            const todosRef = collection(db, 'todos');
+            const q = query(todosRef, orderBy('createdAt', 'desc'));
+
+            unsubscribeTodos = onSnapshot(q,
+                (snapshot) => {
+                    allTodos = [];
+                    snapshot.forEach((doc) => {
+                        allTodos.push({ id: doc.id, ...doc.data() });
+                    });
+                    updateSyncStatus('synced');
+                    window.renderTodos();
+                },
+                (error) => {
+                    console.error('Error loading todos:', error);
+                    updateSyncStatus('error', 'Connection error');
+                }
+            );
+        }
+
+        // Add new entry or to-do
         window.addEntry = async function() {
             if (!currentUser) return;
 
             const input = document.getElementById('entryInput');
             const flagCheckbox = document.getElementById('flagCheckbox');
+            const todoCheckbox = document.getElementById('todoCheckbox');
             const text = input.value.trim();
             
             if (text === '') {
-                alert('Please write something in your log entry!');
+                alert('Please write something!');
+                return;
+            }
+
+            const isTodo = todoCheckbox.checked;
+
+            if (isTodo) {
+                // Add to To-Do collection
+                const todoId = Date.now().toString();
+                const todo = {
+                    text: text,
+                    completed: false,
+                    dueDate: null,
+                    createdAt: new Date().toISOString(),
+                    userId: currentUser.uid
+                };
+
+                try {
+                    updateSyncStatus('syncing', 'Saving...');
+                    await setDoc(doc(db, 'todos', todoId), todo);
+                    
+                    input.value = '';
+                    todoCheckbox.checked = false;
+                    updateSyncStatus('synced');
+                } catch (error) {
+                    console.error('Error adding todo:', error);
+                    updateSyncStatus('error', 'Failed to save');
+                    alert('Failed to save to-do. Please try again.');
+                }
+            } else {
+                // Add to Log entries
+                const timestamp = getCurrentDateTime();
+                const entryId = Date.now().toString();
+                const monthKey = getCurrentMonthKey();
+
+                const entry = {
+                    timestamp: timestamp,
+                    text: text,
+                    flagged: flagCheckbox.checked,
+                    fromTodo: false,
+                    createdAt: new Date().toISOString(),
+                    userId: currentUser.uid
+                };
+
+                try {
+                    updateSyncStatus('syncing', 'Saving...');
+                    await setDoc(doc(db, `logbooks/${monthKey}/entries`, entryId), entry);
+                    
+                    input.value = '';
+                    flagCheckbox.checked = false;
+                    updateSyncStatus('synced');
+                } catch (error) {
+                    console.error('Error adding entry:', error);
+                    updateSyncStatus('error', 'Failed to save');
+                    alert('Failed to save entry. Please try again.');
+                }
+            }
+        };
+
+        // Toggle completion status
+        window.toggleComplete = async function(id) {
+            const todo = allTodos.find(t => t.id === id);
+            if (!todo) return;
+
+            try {
+                updateSyncStatus('syncing', 'Updating...');
+                await setDoc(doc(db, 'todos', id), {
+                    ...todo,
+                    completed: !todo.completed
+                });
+                updateSyncStatus('synced');
+            } catch (error) {
+                console.error('Error toggling completion:', error);
+                updateSyncStatus('error', 'Update failed');
+            }
+        };
+
+        // Start setting due date
+        window.startSetDueDate = function(id) {
+            settingDueDate = id;
+            window.renderTodos();
+        };
+
+        // Save due date
+        window.saveDueDate = async function(id) {
+            const input = document.getElementById(`due-${id}`);
+            const dueDate = input.value;
+
+            const todo = allTodos.find(t => t.id === id);
+            if (!todo) return;
+
+            try {
+                updateSyncStatus('syncing', 'Saving...');
+                await setDoc(doc(db, 'todos', id), {
+                    ...todo,
+                    dueDate: dueDate || null
+                });
+                settingDueDate = null;
+                updateSyncStatus('synced');
+            } catch (error) {
+                console.error('Error saving due date:', error);
+                updateSyncStatus('error', 'Save failed');
+            }
+        };
+
+        // Cancel setting due date
+        window.cancelSetDueDate = function() {
+            settingDueDate = null;
+            window.renderTodos();
+        };
+
+        // Archive single completed to-do
+        window.archiveTodo = async function(id) {
+            const todo = allTodos.find(t => t.id === id);
+            if (!todo || !todo.completed) return;
+
+            if (!confirm('Archive this completed to-do to log entries?')) {
                 return;
             }
 
             const timestamp = getCurrentDateTime();
-            const entryId = Date.now().toString();
             const monthKey = getCurrentMonthKey();
+            const entryId = Date.now().toString();
 
             const entry = {
                 timestamp: timestamp,
-                text: text,
-                flagged: flagCheckbox.checked,
+                text: todo.text,
+                flagged: false,
+                fromTodo: true,
                 createdAt: new Date().toISOString(),
                 userId: currentUser.uid
             };
 
             try {
-                updateSyncStatus('syncing', 'Saving...');
+                updateSyncStatus('syncing', 'Archiving...');
+                
+                // Add to log entries
                 await setDoc(doc(db, `logbooks/${monthKey}/entries`, entryId), entry);
                 
-                input.value = '';
-                flagCheckbox.checked = false;
+                // Delete from todos
+                await deleteDoc(doc(db, 'todos', id));
+                
                 updateSyncStatus('synced');
             } catch (error) {
-                console.error('Error adding entry:', error);
-                updateSyncStatus('error', 'Failed to save');
-                alert('Failed to save entry. Please try again.');
+                console.error('Error archiving todo:', error);
+                updateSyncStatus('error', 'Archive failed');
+                alert('Failed to archive. Please try again.');
+            }
+        };
+
+        // Archive all completed to-dos
+        window.archiveCompleted = async function() {
+            const completedTodos = allTodos.filter(t => t.completed);
+            
+            if (completedTodos.length === 0) {
+                alert('No completed to-dos to archive!');
+                return;
+            }
+
+            if (!confirm(`Archive ${completedTodos.length} completed to-do(s) to log entries?`)) {
+                return;
+            }
+
+            const timestamp = getCurrentDateTime();
+            const monthKey = getCurrentMonthKey();
+
+            try {
+                updateSyncStatus('syncing', 'Archiving...');
+                
+                for (const todo of completedTodos) {
+                    const entryId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+                    
+                    const entry = {
+                        timestamp: timestamp,
+                        text: todo.text,
+                        flagged: false,
+                        fromTodo: true,
+                        createdAt: new Date().toISOString(),
+                        userId: currentUser.uid
+                    };
+
+                    await setDoc(doc(db, `logbooks/${monthKey}/entries`, entryId), entry);
+                    await deleteDoc(doc(db, 'todos', todo.id));
+                }
+                
+                updateSyncStatus('synced');
+                alert(`${completedTodos.length} to-do(s) archived successfully!`);
+            } catch (error) {
+                console.error('Error archiving todos:', error);
+                updateSyncStatus('error', 'Archive failed');
+                alert('Failed to archive. Please try again.');
+            }
+        };
+
+        // Delete to-do
+        window.deleteTodo = async function(id) {
+            if (!confirm('Are you sure you want to delete this to-do?')) {
+                return;
+            }
+
+            try {
+                updateSyncStatus('syncing', 'Deleting...');
+                await deleteDoc(doc(db, 'todos', id));
+                updateSyncStatus('synced');
+            } catch (error) {
+                console.error('Error deleting todo:', error);
+                updateSyncStatus('error', 'Delete failed');
             }
         };
 
@@ -1015,6 +1363,11 @@
                     return false;
                 }
 
+                // Exclude archived to-dos filter
+                if (flagFilter === 'no-todo' && entry.fromTodo) {
+                    return false;
+                }
+
                 return true;
             });
         };
@@ -1034,6 +1387,60 @@
             window.applyFilters();
         };
 
+        // Render to-do items
+        window.renderTodos = function() {
+            const list = document.getElementById('todoList');
+            
+            if (allTodos.length === 0) {
+                list.innerHTML = '<div class="empty-state">No to-do items yet. Create one above!</div>';
+            } else {
+                list.innerHTML = allTodos.map(todo => {
+                    const isSettingDue = settingDueDate === todo.id;
+                    const overdueStatus = !todo.completed && todo.dueDate && isOverdue(todo.dueDate);
+                    
+                    return `
+                        <div class="todo-item ${todo.completed ? 'completed' : ''} ${overdueStatus ? 'overdue' : ''}">
+                            <div class="entry-header">
+                                <div class="entry-time-flag">
+                                    ${todo.completed ? '<span class="completed-badge">✓ COMPLETED</span>' : ''}
+                                    ${overdueStatus ? '<span class="overdue-badge">⚠ OVERDUE</span>' : ''}
+                                    ${todo.dueDate && !isSettingDue ? `<span class="due-date">Due: ${todo.dueDate}</span>` : ''}
+                                </div>
+                                <div class="entry-actions">
+                                    ${isSettingDue ? `
+                                        <button class="save-btn" onclick="saveDueDate('${todo.id}')">Save</button>
+                                        <button class="cancel-btn" onclick="cancelSetDueDate()">Cancel</button>
+                                    ` : `
+                                        <button class="complete-btn" onclick="toggleComplete('${todo.id}')">
+                                            ${todo.completed ? 'Mark Incomplete' : 'Mark Complete'}
+                                        </button>
+                                        <button class="set-due-btn" onclick="startSetDueDate('${todo.id}')">
+                                            ${todo.dueDate ? 'Change Due' : 'Set Due'}
+                                        </button>
+                                        ${todo.completed ? `
+                                            <button class="archive-btn" onclick="archiveTodo('${todo.id}')">Archive</button>
+                                        ` : ''}
+                                        <button class="delete-btn" onclick="deleteTodo('${todo.id}')">Delete</button>
+                                    `}
+                                </div>
+                            </div>
+                            ${isSettingDue ? `
+                                <input type="date" class="due-date-input" id="due-${todo.id}" value="${todo.dueDate || ''}">
+                            ` : `
+                                <div class="entry-text ${todo.completed ? 'completed' : ''}">${todo.text}</div>
+                            `}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Update stats
+            const activeTodos = allTodos.filter(t => !t.completed).length;
+            const completedTodos = allTodos.filter(t => t.completed).length;
+            document.getElementById('totalTodos').textContent = activeTodos;
+            document.getElementById('completedTodos').textContent = completedTodos;
+        };
+
         // Render entries
         window.renderEntries = function(entriesToShow) {
             const list = document.getElementById('entriesList');
@@ -1045,18 +1452,18 @@
                     ? 'No entries yet this month. Start logging!'
                     : 'No entries match your search criteria.';
                 list.innerHTML = `<div class="empty-state">${message}</div>`;
-                document.getElementById('filteredEntries').textContent = '0';
             } else {
                 list.innerHTML = entriesToShow.map(entry => {
                     const isEditing = editingId === entry.id;
                     const displayText = highlightText(entry.text, searchTerm);
                     
                     return `
-                        <div class="entry-item ${entry.flagged ? 'flagged' : ''} ${isEditing ? 'editing' : ''}">
+                        <div class="entry-item ${entry.flagged ? 'flagged' : ''} ${entry.fromTodo ? 'from-todo' : ''} ${isEditing ? 'editing' : ''}">
                             <div class="entry-header">
                                 <div class="entry-time-flag">
                                     <div class="entry-time">${entry.timestamp}</div>
                                     ${entry.flagged ? '<span class="flag-badge">🚩 FLAGGED</span>' : ''}
+                                    ${entry.fromTodo ? '<span class="todo-badge">📋 FROM TO-DO</span>' : ''}
                                 </div>
                                 <div class="entry-actions">
                                     ${isEditing ? `
@@ -1079,16 +1486,12 @@
                         </div>
                     `;
                 }).join('');
-                
-                document.getElementById('filteredEntries').textContent = entriesToShow.length;
             }
 
             // Update stats
             document.getElementById('totalEntries').textContent = allEntries.length;
             const flaggedCount = allEntries.filter(e => e.flagged).length;
             document.getElementById('flaggedEntries').textContent = flaggedCount;
-            const todayCount = allEntries.filter(e => e.timestamp.startsWith(today)).length;
-            document.getElementById('todayEntries').textContent = todayCount;
         };
 
         // Export to file
@@ -1107,29 +1510,31 @@
             let suffix = '';
             if (flagFilter === 'flagged') suffix = '_flagged';
             else if (flagFilter === 'unflagged') suffix = '_unflagged';
+            else if (flagFilter === 'no-todo') suffix = '_no-todo';
             else if (searchTerm) suffix = '_filtered';
             
             // Create CSV content
-const BOM = '\uFEFF'; // UTF-8 BOM for Windows Excel
-let csvContent = BOM + 'Timestamp,Flagged,Entry\n';
-entries.forEach(entry => {
-    const escapedText = '"' + entry.text.replace(/"/g, '""') + '"';
-    const flagged = entry.flagged ? 'x' : '';
-    csvContent += `${entry.timestamp},${flagged},${escapedText}\n`;
-});
+            const BOM = '\uFEFF';
+            let csvContent = BOM + 'Timestamp,Flagged,From To-Do,Entry\n';
+            entries.forEach(entry => {
+                const escapedText = '"' + entry.text.replace(/"/g, '""') + '"';
+                const flagged = entry.flagged ? 'x' : '';
+                const fromTodo = entry.fromTodo ? 'x' : '';
+                csvContent += `${entry.timestamp},${flagged},${fromTodo},${escapedText}\n`;
+            });
 
             // Create TXT content
             let txtContent = `Log Entries for ${monthKey}${suffix}\n`;
             txtContent += '='.repeat(50) + '\n\n';
             entries.forEach(entry => {
                 const flagIndicator = entry.flagged ? ' 🚩 [FLAGGED]' : '';
-                txtContent += `${entry.timestamp}${flagIndicator}\n${entry.text}\n\n`;
+                const todoIndicator = entry.fromTodo ? ' 📋 [FROM TO-DO]' : '';
+                txtContent += `${entry.timestamp}${flagIndicator}${todoIndicator}\n${entry.text}\n\n`;
             });
 
             // Download CSV
             downloadFile(`logbook_${monthKey}${suffix}.csv`, csvContent, 'text/csv');
             
-            // Also offer TXT
             setTimeout(() => {
                 if (confirm('CSV file downloaded! Would you also like a TXT version?')) {
                     downloadFile(`logbook_${monthKey}${suffix}.txt`, txtContent, 'text/plain');
@@ -1165,7 +1570,6 @@ entries.forEach(entry => {
             document.getElementById('currentMonth').textContent = `Current Month: ${monthName}`;
         }
 
-        // Initialize month display
         updateMonthDisplay();
     </script>
 </body>
